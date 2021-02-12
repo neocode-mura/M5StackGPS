@@ -101,6 +101,7 @@ static void rx_task(void *arg)
     int startIdx;
     int commaIdx;
     char pickChar;
+    int gnrmcItemLen;
 
     while (1) {
         const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
@@ -109,7 +110,7 @@ static void rx_task(void *arg)
             gnrmcData = strstr((char*)data, "$GNRMC");
             strtok(gnrmcData, "\n");
         //    strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
-             strcpy(gnrmcData, "$GNRMC,201536.000,V,,,,,,,311221,,,A*7C");
+             strcpy(gnrmcData, "$GNRMC,,V,,,,,,,,,,A*7C");
             ESP_LOGI("GNRMC Data", "%s", gnrmcData);
             dayAdd = 0;
             itemIdx = 0;
@@ -122,69 +123,80 @@ static void rx_task(void *arg)
                     *(gnrmcItem + commaIdx - 1) = '\0';
 					startIdx += commaIdx;
 					commaIdx = 0;
+					gnrmcItemLen = strlen(gnrmcItem);
 					switch(itemIdx++){
 					case TIME_IDX:
-						strncpy(hour, gnrmcItem, 2);
-						hour[2] = '\0';
-						hourInt = atoi(hour);
-						hourInt += 9;
-                        if(hourInt >= 24) {
-                            dayAdd = 1;
-                            hourInt -= 24;
-                        }
-						strncpy(minitu, gnrmcItem + 2, 2);
-						minitu[2] = '\0';
-						strncpy(second, gnrmcItem + 4, 2);
-						second[2] = '\0';
-						sprintf(time, "%02d:%s:%s\n", hourInt, minitu, second);
+						if(gnrmcItemLen > 0) {
+							strncpy(hour, gnrmcItem, 2);
+							hour[2] = '\0';
+							hourInt = atoi(hour);
+							hourInt += 9;
+							if(hourInt >= 24) {
+								dayAdd = 1;
+								hourInt -= 24;
+							}
+							strncpy(minitu, gnrmcItem + 2, 2);
+							minitu[2] = '\0';
+							strncpy(second, gnrmcItem + 4, 2);
+							second[2] = '\0';
+							sprintf(time, "%02d:%s:%s", hourInt, minitu, second);
+						}
+						else {
+							time[0] = '\0';
+						}
 						break;
 					case DATE_IDX:
-						strncpy(day, gnrmcItem, 2);
-						day[2] = '\0';
-                        dayInt = atoi(day);
-                        dayInt += dayAdd;
-						strncpy(month, gnrmcItem + 2, 2);
-						month[2] = '\0';
-                        monthInt = atoi(month);
-                        switch(monthInt) {
-                            case 1:
-                            case 3:
-                            case 5:
-                            case 7:
-                            case 8:
-                            case 10:
-                            case 12:
-                            	if(dayInt > 31) {
-                            		monthInt++;
-                            		dayInt = 1;
-                            	}
-                                break;
-                            case 2:
-                            	if(dayInt > 28) {
-                            		monthInt++;
-                            		dayInt = 1;
-                            	}
-                                break;
-                            case 4:
-                            case 6:
-                            case 9:
-                            case 11:
-                            	if(dayInt > 30) {
-                            		monthInt++;
-                            		dayInt = 1;
-                            	}
-                                break;
-                            default:
-                                break;
-                        }
-                        strncpy(year, gnrmcItem + 4, 2);
-						year[2] = '\0';
-                        yearInt = atoi(year);
-                        if(monthInt > 12) {
-                            yearInt++;
-                            monthInt = 1;
-                        }
-						sprintf(dateTime, "20%02d/%02d/%02d ", yearInt, monthInt, dayInt);
+						if(gnrmcItemLen > 0) {
+							strncpy(day, gnrmcItem, 2);
+							day[2] = '\0';
+							dayInt = atoi(day);
+							dayInt += dayAdd;
+							strncpy(month, gnrmcItem + 2, 2);
+							month[2] = '\0';
+							monthInt = atoi(month);
+							switch(monthInt) {
+								case 1:
+								case 3:
+								case 5:
+								case 7:
+								case 8:
+								case 10:
+								case 12:
+									if(dayInt > 31) {
+										monthInt++;
+										dayInt = 1;
+									}
+									break;
+								case 2:
+									if(dayInt > 28) {
+										monthInt++;
+										dayInt = 1;
+									}
+									break;
+								case 4:
+								case 6:
+								case 9:
+								case 11:
+									if(dayInt > 30) {
+										monthInt++;
+										dayInt = 1;
+									}
+									break;
+								default:
+									break;
+							}
+							strncpy(year, gnrmcItem + 4, 2);
+							year[2] = '\0';
+							yearInt = atoi(year);
+							if(monthInt > 12) {
+								yearInt++;
+								monthInt = 1;
+							}
+							sprintf(dateTime, "20%02d/%02d/%02d ", yearInt, monthInt, dayInt);
+						}
+						else {
+							dateTime[0] = '\0';
+						}
 						break;
 					default:
 						break;
@@ -196,6 +208,7 @@ static void rx_task(void *arg)
 				if(itemIdx >= 10) break;
 			}
             strcat(dateTime, time);
+            dateTime[strlen(dateTime)] = '\n';
             printf(dateTime);
         }
     }
