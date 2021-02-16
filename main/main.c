@@ -117,7 +117,7 @@ static void rx_task(void *arg)
         	dateTime[0] = '\0';
             gnrmcData = strstr((char*)data, "$GNRMC");
             strtok(gnrmcData, "\n");
-            strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
+//            strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
 //             strcpy(gnrmcData, "$GNRMC,,V,,,,,,,,,,A*7C");
             ESP_LOGI("GNRMC Data", "%s", gnrmcData);
             dayAdd = 0;
@@ -309,14 +309,14 @@ void app_main(void)
     lv_obj_t * mpu6886_lable = lv_label_create(lv_scr_act(), NULL);
     lv_obj_align(mpu6886_lable, time_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
 
-    lv_obj_t * touch_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(touch_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
-
-    lv_obj_t * pmu_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(pmu_label, touch_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
+//    lv_obj_t * touch_label = lv_label_create(lv_scr_act(), NULL);
+//    lv_obj_align(touch_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
+//
+//    lv_obj_t * pmu_label = lv_label_create(lv_scr_act(), NULL);
+//    lv_obj_align(pmu_label, touch_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
 
     lv_obj_t * led_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(led_label, pmu_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
+    lv_obj_align(led_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 50);
     lv_label_set_text(led_label, "Power LED & SK6812");
     
     lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
@@ -356,7 +356,7 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(ateccTask, "ateccTask", 4096*2, NULL, 1, NULL, 1);
 
-    char label_stash[200];
+//    char label_stash[200];
 
     init();
     xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
@@ -366,23 +366,23 @@ void app_main(void)
 //        sprintf(label_stash, "Time: %d-%02d-%02d %02d:%02d:%02d\r\n",
 //                date.year, date.month, date.day, date.hour, date.minute, date.second);
         xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
-        lv_label_set_text(time_label, label_stash);
+        lv_label_set_text(time_label, dateTime);
         xSemaphoreGive(xGuiSemaphore);
 
-        float ax, ay, az;
-        MPU6886_GetAccelData(&ax, &ay, &az);
-        sprintf(label_stash, "MPU6886 Acc x: %.2f, y: %.2f, z: %.2f\r\n", ax, ay, az);
+//        float ax, ay, az;
+//        MPU6886_GetAccelData(&ax, &ay, &az);
+//        sprintf(label_stash, "MPU6886 Acc x: %.2f, y: %.2f, z: %.2f\r\n", ax, ay, az);
         xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
-        lv_label_set_text(mpu6886_lable, label_stash);
+        lv_label_set_text(mpu6886_lable, lat_lon);
         xSemaphoreGive(xGuiSemaphore);
 
-        uint16_t x, y;
-        bool press;
-        FT6336U_GetTouch(&x, &y, &press);
-        sprintf(label_stash, "Touch x: %d, y: %d, press: %d\r\n", x, y, press);
-        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
-        lv_label_set_text(touch_label, label_stash);
-        xSemaphoreGive(xGuiSemaphore);
+//        uint16_t x, y;
+//        bool press;
+//        FT6336U_GetTouch(&x, &y, &press);
+//        sprintf(label_stash, "Touch x: %d, y: %d, press: %d\r\n", x, y, press);
+//        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
+//        lv_label_set_text(touch_label, label_stash);
+//        xSemaphoreGive(xGuiSemaphore);
 
 //        sprintf(label_stash, "Bat %.3f V, %.3f mA\r\n", Core2ForAWS_PMU_GetBatVolt(), Core2ForAWS_PMU_GetBatCurrent());
 //        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
