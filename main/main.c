@@ -59,8 +59,12 @@ static const int LAT_BUF_SIZE = 12;
 #define EAST_WEST_IDX 6
 #define DATE_IDX 9
 
+#define SATELLITE_NUM_IDX 7
+#define HEIGHT_IDX 9
+
 char dateTime[41];
 char lat_lon[45];
+char satelliteNum_height[40];
 
 void init(void) {
     const uart_config_t uart_config = {
@@ -82,8 +86,11 @@ static void rx_task(void *arg)
     static const char *RX_TASK_TAG = "RX_TASK";
     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
     uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
+    char* data2 = (char*)malloc(RX_BUF_SIZE+1);
     char* gnrmcData = (char*)malloc(RMC_BUF_SIZE);
+    char* gnggaData = (char*)malloc(RMC_BUF_SIZE);
     char gnrmcItem[LAT_BUF_SIZE];
+    char gnggaItem[LAT_BUF_SIZE];
 	char year[3];
     int yearInt;
 	char month[3];
@@ -105,20 +112,25 @@ static void rx_task(void *arg)
 	char N_S[2];
 	char E_W[2];
 
+	char satelliteNum[3];
+	char height[6];
+
     int itemIdx;
     int startIdx;
     int commaIdx;
     char pickChar;
     int gnrmcItemLen;
+    int gnggaItemLen;
 
     while (1) {
         const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
         if (rxBytes > 0) {
         	dateTime[0] = '\0';
+        	data[RX_BUF_SIZE] = '\0';
+        	strcpy(data2, (char*)data);
             gnrmcData = strstr((char*)data, "$GNRMC");
             strtok(gnrmcData, "\n");
 //            strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
-//             strcpy(gnrmcData, "$GNRMC,,V,,,,,,,,,,A*7C");
             ESP_LOGI("GNRMC Data", "%s", gnrmcData);
             dayAdd = 0;
             itemIdx = 0;
@@ -250,9 +262,6 @@ static void rx_task(void *arg)
 						break;
 					}
 				}
-//				else if(pickChar == '\0'){
-//					break;
-//				}
 				if(itemIdx >= 10) break;
 			}
             strcat(dateTime, time);
@@ -266,6 +275,51 @@ static void rx_task(void *arg)
             	sprintf(lat_lon, "NG\n");
             }
             printf(lat_lon);
+
+			// GNGGA data
+			gnggaData = strstr(data2, "$GNGGA");
+			strtok(gnggaData, "\n");
+//			strcpy(gnggaData, "$GNGGA,051540.000,3557.92081,N,13759.11679,E,1,09,1.3,767.7,M,0.0,M,,*7A");
+            ESP_LOGI("GNGGA Data", "%s", gnggaData);
+			itemIdx = 0;
+			startIdx = 0;
+			commaIdx = 0;
+			while(1) {
+				strncpy(&pickChar, gnggaData + startIdx + commaIdx++, 1);
+				if(pickChar == ',') {
+					strncpy(gnggaItem, gnggaData + startIdx, commaIdx - 1);
+					*(gnggaItem + commaIdx - 1) = '\0';
+					startIdx += commaIdx;
+					commaIdx = 0;
+					gnggaItemLen = strlen(gnggaItem);
+					switch(itemIdx++){
+					case SATELLITE_NUM_IDX:
+						if(gnggaItemLen > 0) {
+							strcpy(satelliteNum, gnggaItem);
+						}
+						else {
+							satelliteNum[0] = '\0';
+						}
+						break;
+					case HEIGHT_IDX:
+						if(gnggaItemLen > 0) {
+							strcpy(height, gnggaItem);
+						}
+						else {
+							height[0] = '\0';
+						}
+						break;
+					}
+				}
+				if(itemIdx >= 10) break;
+			}
+			if(strlen(height) > 0) {
+				sprintf(satelliteNum_height, "Satellite number:%s, Height:%s\n", satelliteNum, height);
+			}
+			else {
+				sprintf(satelliteNum_height, "Satellite number:%s\n", satelliteNum);
+			}
+			printf(satelliteNum_height);
         }
     }
     free(data);
@@ -309,14 +363,14 @@ void app_main(void)
     lv_obj_t * mpu6886_lable = lv_label_create(lv_scr_act(), NULL);
     lv_obj_align(mpu6886_lable, time_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
 
-//    lv_obj_t * touch_label = lv_label_create(lv_scr_act(), NULL);
-//    lv_obj_align(touch_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
-//
+    lv_obj_t * touch_label = lv_label_create(lv_scr_act(), NULL);
+    lv_obj_align(touch_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
+
 //    lv_obj_t * pmu_label = lv_label_create(lv_scr_act(), NULL);
 //    lv_obj_align(pmu_label, touch_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 5);
 
     lv_obj_t * led_label = lv_label_create(lv_scr_act(), NULL);
-    lv_obj_align(led_label, mpu6886_lable, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 50);
+    lv_obj_align(led_label, touch_label, LV_ALIGN_OUT_BOTTOM_LEFT, 0, 27);
     lv_label_set_text(led_label, "Power LED & SK6812");
     
     lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
@@ -359,7 +413,7 @@ void app_main(void)
 //    char label_stash[200];
 
     init();
-    xTaskCreate(rx_task, "uart_rx_task", 1024*2, NULL, configMAX_PRIORITIES, NULL);
+    xTaskCreate(rx_task, "uart_rx_task", 1024*4, NULL, configMAX_PRIORITIES, NULL);
 
     for (;;) {
 //        BM8563_GetTime(&date);
@@ -380,9 +434,9 @@ void app_main(void)
 //        bool press;
 //        FT6336U_GetTouch(&x, &y, &press);
 //        sprintf(label_stash, "Touch x: %d, y: %d, press: %d\r\n", x, y, press);
-//        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
-//        lv_label_set_text(touch_label, label_stash);
-//        xSemaphoreGive(xGuiSemaphore);
+        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
+        lv_label_set_text(touch_label, satelliteNum_height);
+        xSemaphoreGive(xGuiSemaphore);
 
 //        sprintf(label_stash, "Bat %.3f V, %.3f mA\r\n", Core2ForAWS_PMU_GetBatVolt(), Core2ForAWS_PMU_GetBatCurrent());
 //        xSemaphoreTake(xGuiSemaphore, portMAX_DELAY);
