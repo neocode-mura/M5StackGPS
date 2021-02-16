@@ -250,9 +250,9 @@ static void rx_task(void *arg)
 						break;
 					}
 				}
-				else if(pickChar == '\0'){
-					break;
-				}
+//				else if(pickChar == '\0'){
+//					break;
+//				}
 				if(itemIdx >= 10) break;
 			}
             strcat(dateTime, time);
