@@ -54,12 +54,13 @@ static const int LAT_BUF_SIZE = 12;
 #define TIME_IDX 1
 #define VALID_IDX 2
 #define LAT_IDX 3
-#define NORTH_IDX 4
+#define NORTH_SOUTH_IDX 4
 #define LON_IDX 5
-#define EAST_IDX 6
+#define EAST_WEST_IDX 6
 #define DATE_IDX 9
 
-char dateTime[40];
+char dateTime[41];
+char lat_lon[45];
 
 void init(void) {
     const uart_config_t uart_config = {
@@ -87,7 +88,6 @@ static void rx_task(void *arg)
     int yearInt;
 	char month[3];
     int monthInt;
-//    int monthAdd;
 	char day[3];
     int dayInt;
     int dayAdd;
@@ -96,6 +96,14 @@ static void rx_task(void *arg)
 	char minitu[3];
 	char second[3];
 	char time[20];
+
+	char validLatLon[2];
+	char latitude0[3];
+	char latitude1[9];
+	char longitude0[4];
+	char longitude1[9];
+	char N_S[2];
+	char E_W[2];
 
     int itemIdx;
     int startIdx;
@@ -109,8 +117,8 @@ static void rx_task(void *arg)
         	dateTime[0] = '\0';
             gnrmcData = strstr((char*)data, "$GNRMC");
             strtok(gnrmcData, "\n");
-        //    strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
-             strcpy(gnrmcData, "$GNRMC,,V,,,,,,,,,,A*7C");
+            strcpy(gnrmcData, "$GNRMC,051536.000,A,3557.92035,N,13759.11744,E,0.00,129.95,080221,,,A*7C");
+//             strcpy(gnrmcData, "$GNRMC,,V,,,,,,,,,,A*7C");
             ESP_LOGI("GNRMC Data", "%s", gnrmcData);
             dayAdd = 0;
             itemIdx = 0;
@@ -143,6 +151,46 @@ static void rx_task(void *arg)
 						}
 						else {
 							time[0] = '\0';
+						}
+						break;
+					case VALID_IDX:
+						strcpy(validLatLon, gnrmcItem);
+						break;
+					case LAT_IDX:
+						if(gnrmcItemLen > 0) {
+							strncpy(latitude0, gnrmcItem, 2);
+							strcpy(latitude1, gnrmcItem + 2);
+						}
+						else {
+							latitude0[0] = '\0';
+							latitude1[0] = '\0';
+						}
+						break;
+					case NORTH_SOUTH_IDX:
+						if(gnrmcItemLen > 0) {
+							strcpy(N_S, gnrmcItem);
+						}
+						else {
+							N_S[0] = '\0';
+						}
+						break;
+					case LON_IDX:
+						if(gnrmcItemLen > 0) {
+							strncpy(longitude0, gnrmcItem, 3);
+							longitude0[3] = '\0';
+							strcpy(longitude1, gnrmcItem + 3);
+						}
+						else {
+							longitude0[0] = '\0';
+							longitude1[0] = '\0';
+						}
+						break;
+					case EAST_WEST_IDX:
+						if(gnrmcItemLen > 0) {
+							strcpy(E_W, gnrmcItem);
+						}
+						else {
+							E_W[0] = '\0';
 						}
 						break;
 					case DATE_IDX:
@@ -210,6 +258,14 @@ static void rx_task(void *arg)
             strcat(dateTime, time);
             dateTime[strlen(dateTime)] = '\n';
             printf(dateTime);
+
+            if(validLatLon[0] == 'A') {
+            	sprintf(lat_lon, "lat. %s %s %s / long. %s %s %s\n", latitude0, latitude1, N_S, longitude0, longitude1, E_W);
+            }
+            else {
+            	sprintf(lat_lon, "NG\n");
+            }
+            printf(lat_lon);
         }
     }
     free(data);
