@@ -269,7 +269,7 @@ static void rx_task(void *arg)
             printf(dateTime);
 
             if(validLatLon[0] == 'A') {
-            	sprintf(lat_lon, "lat. %s %s %s / long. %s %s %s\n", latitude0, latitude1, N_S, longitude0, longitude1, E_W);
+            	sprintf(lat_lon, "lat. %s %s' %s/long. %s %s' %s\n", latitude0, latitude1, N_S, longitude0, longitude1, E_W);
             }
             else {
             	sprintf(lat_lon, "NG\n");
